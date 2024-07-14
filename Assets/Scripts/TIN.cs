@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using Unity.VisualScripting;
 using UnityEngine;
 
@@ -19,7 +20,15 @@ public class TIN : MonoBehaviour
     public void Start()
     {
         InitTriangulation();
+        //ProcessNextPoint();
+        //ProcessNextPoint();
+
+    }
+    public void Update()
+    {
+        if(Input.GetKeyDown(KeyCode.Space)) { 
         ProcessNextPoint();
+        }
     }
 
     public void GenerateNewVertices()
@@ -118,12 +127,13 @@ public class TIN : MonoBehaviour
     {
         LocateTriangles(nextPoint);
 
+        //Debug.Log("processedTriangles: " + string.Join(", ", processedTriangles));
+        //Debug.Log("deleteTriangles: " + string.Join(", ", deleteTriangles));
+        Debug.Log("cavityTriangles: " + string.Join(", ", cavityTriangles));
+        Debug.Log("cavityEdges: " + string.Join(", ", cavityEdges));
+
         InsertPoint(nextPoint);
         UpdateMesh();
-        foreach(Triangle t in triangles)
-        {
-            Debug.Log(t.vertex_indecies[0] + ", " + t.vertex_indecies[1] + ", " + t.vertex_indecies[2]);
-        }
         CleanUp();
     }
     private void LocateTriangles(int point_index)
@@ -155,7 +165,16 @@ public class TIN : MonoBehaviour
             else if(processedTriangles.Contains(n_id)) { }
             else {
                 k = 0;
-                while (triangle_index != triangles[n_id].neighbor_indecies[k]) { k++; }
+                Debug.Log("Triangles.Count: " + triangles.Count + " , n_id: " + n_id);
+                Debug.Log("n_id: " + n_id + " , k: " + k);
+                Debug.Log(triangle_index);
+                Debug.Log(triangles[n_id].ID);
+                Debug.Log(triangles[n_id].neighbor_indecies[k]);
+
+
+
+                while (triangle_index != triangles[n_id].neighbor_indecies[k]) 
+                { k++; }
 
                 if (triangles[n_id].CircumcircleContainsPoint(point_index))
                 {
@@ -165,34 +184,79 @@ public class TIN : MonoBehaviour
                 {
                     cavityTriangles.Add(n_id);
                     cavityEdges.Add(k);
-                    processedTriangles.Add(n_id);
                 }
             }
         }
     }
     private void InsertPoint(int point_indx)
     {
-        List<int> freeIDs = deleteTriangles;
+        HashSet<int> freeIDset = new HashSet<int>(deleteTriangles);
+        List<int> freeIDs = freeIDset.ToList<int>();
         freeIDs.Add(triangles.Count);
         freeIDs.Add(triangles.Count + 1);
 
+        List<Triangle> triangleList = new List<Triangle>();
+
         triangles.Add(new Triangle(triangles.Count, this));
         triangles.Add(new Triangle(triangles.Count, this));
 
-        for (int cavity_indx =0; cavity_indx < cavityTriangles.Count; cavity_indx++)
+        int edgeVert1, edgeVert2;
+        int[] newTriangle_vertices, newTriangle_neighbors;
+        bool isBoundary;
+        int cavityTriangle_ID, cavityEdge_indx;
+
+        for (int cavity_indx = 0; cavity_indx < cavityTriangles.Count; cavity_indx++)
         {
-            // Set vertices of triangle
-            triangles[freeIDs[cavity_indx]].SetVertexIndecies(
-                triangles[cavityTriangles[cavity_indx]].vertex_indecies[cavityEdges[cavity_indx]],
-                triangles[cavityTriangles[cavity_indx]].vertex_indecies[(cavityEdges[cavity_indx] + 1) % 3],
-                point_indx
-            );
+            cavityTriangle_ID = cavityTriangles[cavity_indx];
+            cavityEdge_indx = cavityEdges[cavity_indx];
 
-            // Set neighbors of triangle
-            triangles[freeIDs[cavity_indx]].SetNeighborIndecies(
-                (triangles[cavityTriangles[cavity_indx]].neighbor_indecies[cavityEdges[cavity_indx]] == -1) ? -1 : triangles[cavityTriangles[cavity_indx]].ID,
-                freeIDs[(cavity_indx + 1) % cavityTriangles.Count],
-                freeIDs[(cavity_indx + cavityTriangles.Count - 1) % cavityTriangles.Count]);
+            edgeVert1 = triangles[cavityTriangle_ID].vertex_indecies[cavityEdge_indx];
+            edgeVert2 = triangles[cavityTriangle_ID].vertex_indecies[(cavityEdge_indx + 1) % 3];
+
+            
+
+            isBoundary = triangles[cavityTriangle_ID].neighbor_indecies[cavityEdge_indx] == -1;
+            if (isBoundary)
+            {
+                // Set vertices of triangle
+                newTriangle_vertices = new int[] {
+                    edgeVert1,
+                    edgeVert2,
+                    point_indx
+                };
+
+                // Set neighbors of triangle
+                newTriangle_neighbors = new int[] {
+                    -1,
+                    freeIDs[(cavity_indx + 1) % cavityTriangles.Count],
+                    freeIDs[(cavity_indx + cavityTriangles.Count - 1) % cavityTriangles.Count]
+                };
+            }
+            else
+            {
+                // Set new neighbor for cavity triangle
+                triangles[cavityTriangle_ID].neighbor_indecies[cavityEdge_indx] = freeIDs[cavity_indx];
+
+                // Set vertices of triangle
+                newTriangle_vertices = new int[] {
+                    edgeVert1,
+                    point_indx,
+                    edgeVert2
+                };
+
+                // Set neighbors of triangle
+                newTriangle_neighbors = new int[] {
+                    freeIDs[(cavity_indx + 1) % cavityTriangles.Count],
+                    freeIDs[(cavity_indx + cavityTriangles.Count - 1) % cavityTriangles.Count],
+                    cavityTriangle_ID
+                };
+            }
+            triangleList.Add(new Triangle(freeIDs[cavity_indx], newTriangle_vertices, newTriangle_neighbors, this));
+        }
+
+        foreach(Triangle newTri in triangleList)
+        {
+            triangles[newTri.ID] = newTri;
         }
     }
     private void CleanUp()

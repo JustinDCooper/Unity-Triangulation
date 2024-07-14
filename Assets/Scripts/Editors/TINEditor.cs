@@ -32,5 +32,9 @@ public class TINEditor : Editor
         {
             tin.InitTriangulation();
         }
+        if (GUILayout.Button("ProcessNextPoint"))
+        {
+            tin.ProcessNextPoint();
+        }
     }
 }

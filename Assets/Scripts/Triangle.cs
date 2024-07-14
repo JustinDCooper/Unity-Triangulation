@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -6,7 +7,7 @@ using UnityEngine;
 public class Triangle
 {
     public readonly int ID;
-    public int[] vertex_indecies { get; private set; } = new int[3] { -1, -1, -1 };
+    public int[] vertex_indecies = new int[3] { -1, -1, -1 };
     public int[] neighbor_indecies= new int[3] { -1, -1, -1};
     private readonly TIN tin;
 
@@ -19,6 +20,11 @@ public class Triangle
     public Triangle(int iD, int[] vertex_indecies, TIN tin) : this(iD,tin)
     {
         this.vertex_indecies = vertex_indecies;
+    }
+    public Triangle(int iD, int[] vertex_indecies_, int[] neighbor_indecies_, TIN tin) : this(iD, tin)
+    {
+        this.vertex_indecies = vertex_indecies_;
+        this.neighbor_indecies = neighbor_indecies_;
     }
     public int this[int key]
     {
