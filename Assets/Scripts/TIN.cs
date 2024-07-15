@@ -20,9 +20,6 @@ public class TIN : MonoBehaviour
     public void Start()
     {
         InitTriangulation();
-        //ProcessNextPoint();
-        //ProcessNextPoint();
-
     }
     public void Update()
     {
@@ -126,12 +123,6 @@ public class TIN : MonoBehaviour
     public void ProcessNextPoint()
     {
         LocateTriangles(nextPoint);
-
-        //Debug.Log("processedTriangles: " + string.Join(", ", processedTriangles));
-        //Debug.Log("deleteTriangles: " + string.Join(", ", deleteTriangles));
-        Debug.Log("cavityTriangles: " + string.Join(", ", cavityTriangles));
-        Debug.Log("cavityEdges: " + string.Join(", ", cavityEdges));
-
         InsertPoint(nextPoint);
         UpdateMesh();
         CleanUp();
@@ -146,35 +137,25 @@ public class TIN : MonoBehaviour
         deleteTriangles.Add(triangle_index);
         processedTriangles.Add(triangle_index);
 
+        int[] neighbor_ids = triangles[triangle_index].neighbor_indecies;
         int n_id;
         int sequence;
 
         int k;
 
+        // Loop through Neighbors of root triangle (triangle_index)
         for(int n=0; n < 3; n++)
         {
             sequence = nbSequence[n];
-            if (triangle_index < 0) Debug.LogError("Negative index " + triangle_index);
-            if (sequence >= triangles[triangle_index].neighbor_indecies.Length) Debug.LogError("Cannot access position " + sequence + " from triangle list of length " + triangles[triangle_index].neighbor_indecies.Length);
-            n_id = triangles[triangle_index].neighbor_indecies[sequence];
+            n_id = neighbor_ids[sequence];
 
-            if (n_id == -1) { 
+            if (n_id == -1) { // If Neighbor is domain boundary add root triangle and the boundaries index
                 cavityTriangles.Add(triangle_index);
                 cavityEdges.Add(sequence);
             }
-            else if(processedTriangles.Contains(n_id)) { }
+            else if(processedTriangles.Contains(n_id)) { } // Skip if neighbor already processed
             else {
-                k = 0;
-                Debug.Log("Triangles.Count: " + triangles.Count + " , n_id: " + n_id);
-                Debug.Log("n_id: " + n_id + " , k: " + k);
-                Debug.Log(triangle_index);
-                Debug.Log(triangles[n_id].ID);
-                Debug.Log(triangles[n_id].neighbor_indecies[k]);
-
-
-
-                while (triangle_index != triangles[n_id].neighbor_indecies[k]) 
-                { k++; }
+                k = System.Array.IndexOf(triangles[n_id].neighbor_indecies, triangle_index);
 
                 if (triangles[n_id].CircumcircleContainsPoint(point_index))
                 {
